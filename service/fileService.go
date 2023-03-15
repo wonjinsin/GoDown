@@ -25,11 +25,11 @@ func (t *FileService) Do() {
 		fmt.Printf("Error occurred: %s", err.Error())
 	}
 
-	iterateCount := 1
-	batchCount := iterateCount * 20
+	startNum := 1
+	batchCount := 20
 	errCount := 0
 
-	for i := 0; i <= 1000; i++ {
+	for {
 		if errCount > 100 {
 			fmt.Println("File download done")
 			break
@@ -40,14 +40,15 @@ func (t *FileService) Do() {
 
 		for j := 0; j < batchCount; j++ {
 			go func(num uint64, wg *sync.WaitGroup) {
-				url := t.File.SetURL(uint64(num))
+				url := t.File.GetReplacedURL(uint64(num))
 				if err := t.DownloadFile(url, fmt.Sprintf("%d.ts", num)); err != nil {
 					errCount++
 				}
 				wg.Done()
-			}(uint64(i*batchCount+j), &wg)
+			}(uint64(startNum), &wg)
 		}
 
+		startNum += batchCount
 		wg.Wait()
 	}
 

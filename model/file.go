@@ -12,9 +12,8 @@ import (
 
 // File ...
 type File struct {
-	Repo     string
-	FileName string
-	Input    *Input
+	Repo  string
+	Input *Input
 }
 
 // SetFileSavePath ...
@@ -22,19 +21,18 @@ func (f *File) SetFileSavePath() string {
 	return fmt.Sprintf("%s/%s", f.Repo, f.Input.Folder)
 }
 
-// SetURL ...
-func (f *File) SetURL(num uint64) string {
-	arr := strings.Split(f.Input.URL, f.Input.Separator)
-	start := arr[0]
-	end := ""
-	if len(arr) > 1 {
-		end = arr[1]
-	}
+// GetReplacedURL ...
+func (f File) GetReplacedURL(num uint64) string {
+	arr := strings.Split(f.Input.URL, "/")
+	fileName := arr[len(arr)-1]
+	replacedFileName := f.getReplacedFileName(fileName, num)
+	return strings.Join(arr[:len(arr)-1], "/") + replacedFileName
+}
 
+func (f File) getReplacedFileName(fileName string, num uint64) string {
 	regex := regexp.MustCompile(`[0-9]+`)
 	minIndexLen := len(regex.FindString(f.Input.Separator))
-	middle := regex.ReplaceAllString(f.Input.Separator, fmt.Sprintf("%0"+strconv.Itoa(minIndexLen)+"d", num))
-	return start + middle + end
+	return regex.ReplaceAllString(fileName, fmt.Sprintf("%0"+strconv.Itoa(minIndexLen)+"d", num))
 }
 
 // MakeDirectory ...
