@@ -15,7 +15,10 @@ type FileService struct {
 
 // NewFileService ...
 func NewFileService(input *model.Input) Service {
-	return &FileService{File: &model.File{Repo: "repo", Input: input}}
+	return &FileService{File: &model.File{
+		Repo: "repo", URL: input.URL, Separator: input.Separator, Folder: input.Folder,
+	},
+	}
 }
 
 // Do ...
