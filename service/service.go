@@ -1,6 +1,6 @@
 package service
 
-// Service ...
-type Service interface {
+// FileUsecase ...
+type FileUsecase interface {
 	Do()
 }

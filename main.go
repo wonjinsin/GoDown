@@ -11,12 +11,10 @@ func main() {
 	fmt.Print("Write URL: ")
 	fmt.Scan(&input.URL)
 
-	fmt.Print("Write Seperator: ")
-	fmt.Scan(&input.Separator)
-
 	fmt.Print("Write Folder: ")
 	fmt.Scanln(&input.Folder)
 
-	svc := service.NewFileService(input)
+	file := model.MakeFile(input)
+	svc := service.NewFileService(file)
 	svc.Do()
 }

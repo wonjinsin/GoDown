@@ -14,11 +14,11 @@ type FileService struct {
 }
 
 // NewFileService ...
-func NewFileService(input *model.Input) Service {
-	return &FileService{File: &model.File{
-		Repo: "repo", URL: input.URL, Separator: input.Separator, Folder: input.Folder,
-	},
+func NewFileService(file *model.File) FileUsecase {
+	fs := &FileService{
+		File: file,
 	}
+	return fs
 }
 
 // Do ...
@@ -43,12 +43,17 @@ func (t *FileService) Do() {
 
 		for j := 0; j < batchCount; j++ {
 			go func(num uint64, wg *sync.WaitGroup) {
-				url := t.File.GetReplacedURL(uint64(num))
-				if err := t.DownloadFile(url, fmt.Sprintf("%d.ts", num)); err != nil {
+				url, err := t.File.GetReplacedURL(uint64(num))
+				if err != nil {
+					fmt.Printf("Error occured: %s", err.Error())
+					errCount++
+				}
+				if err := t.DownloadFile(url, fmt.Sprintf("%d.%s", num, t.File.GetExtension())); err != nil {
+					fmt.Printf("Error occured: %s", err.Error())
 					errCount++
 				}
 				wg.Done()
-			}(uint64(startNum), &wg)
+			}(uint64(startNum+j), &wg)
 		}
 
 		startNum += batchCount
