@@ -3,14 +3,12 @@ package service
 import (
 	"cheetah/model"
 	"fmt"
-	"net/http"
 	"sync"
 )
 
 // FileService ...
 type FileService struct {
-	File   *model.File
-	Client *model.Client
+	File *model.File
 }
 
 // NewFileService ...
@@ -67,9 +65,11 @@ func (t *FileService) Do() {
 
 // DownloadFile ...
 func (t *FileService) DownloadFile(url string, filename string) error {
-	fmt.Println(fmt.Sprintf("start: %s, url: %s", filename, url))
-	client := &model.Client{Client: &http.Client{}}
-	client.SetRequest(url)
+	fmt.Println(fmt.Sprintf("filename: %s, url: %s", filename, url))
+	client, err := model.MakeClient(url)
+	if err != nil {
+		return err
+	}
 
 	resp, err := client.Do()
 	if err != nil {
