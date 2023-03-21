@@ -50,9 +50,8 @@ func MakeClient(url string) (client *Client, err error) {
 }
 
 func getDomainFromURL(url string) string {
-	r := regexp.MustCompile(`^(http:|https://([^/]+))`)
+	r := regexp.MustCompile(`^((http:|https:)//([^/]+))`)
 	match := r.FindStringSubmatch(url)
-
 	if len(match) < 1 {
 		return ""
 	}
