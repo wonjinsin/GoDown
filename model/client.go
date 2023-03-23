@@ -18,21 +18,23 @@ func (c *Client) Do() (*http.Response, error) {
 }
 
 // MakeClient ...
-func MakeClient(url string) (client *Client, err error) {
+func MakeClient(url string, origin string) (client *Client, err error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, errors.New("MakeClient failed")
 	}
 
-	domain := getDomainFromURL(url)
-	if domain == "" {
-		return nil, errors.New("domain is invalid")
+	if origin != "" {
+		origin = getDomainFromURL(url)
+	}
+	if origin == "" {
+		return nil, errors.New("origin is invalid")
 	}
 
 	req.Header.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:104.0) Gecko/20100101 Firefox/104.0")
-	req.Header.Add("Host", domain)
-	req.Header.Add("origin", domain)
-	req.Header.Add("referer", domain)
+	req.Header.Add("Host", origin)
+	req.Header.Add("origin", origin)
+	req.Header.Add("referer", origin)
 	req.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
 	req.Header.Add("Accept-Language", "ko-KR,ko;q=0.8,en-US;q=0.5,en;q=0.3")
 	req.Header.Add("Accept-Encoding", "gzip, deflate, br")

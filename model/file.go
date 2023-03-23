@@ -73,18 +73,21 @@ func (f File) getReplacedPath(path string, num uint64) (replaced string, err err
 func (f File) getReplacedFileName(fileName string, num uint64) string {
 	r := regexp.MustCompile(`^([0-9]+)$|(-[0-9]+)|(_[0-9]+)`)
 	arr := r.FindStringSubmatch(fileName)
-	var separator string
-	var separatorLen int
-	for i, v := range arr {
-		if i == 0 || v == "" {
-			continue
+	var separator string = f.Separator
+	var separatorLen int = len(f.Separator)
+
+	if separator != "" {
+		for i, v := range arr {
+			if i == 0 || v == "" {
+				continue
+			}
+			separator = v
+			separatorLen = len(v)
+			if i > 1 {
+				separatorLen--
+			}
+			break
 		}
-		separator = v
-		separatorLen = len(v)
-		if i > 1 {
-			separatorLen--
-		}
-		break
 	}
 
 	replaced := regexp.MustCompile(`[0-9]+`).ReplaceAllString(separator, fmt.Sprintf("%0"+strconv.Itoa(separatorLen)+"d", num))

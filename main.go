@@ -14,7 +14,6 @@ func main() {
 	fmt.Print("Write Folder: ")
 	fmt.Scanln(&input.Folder)
 
-	file := model.MakeFile(input)
-	svc := service.NewFileService(file)
+	svc := service.NewFileService(input)
 	svc.Do()
 }

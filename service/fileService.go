@@ -8,13 +8,15 @@ import (
 
 // FileService ...
 type FileService struct {
-	File *model.File
+	Input *model.Input
+	File  *model.File
 }
 
 // NewFileService ...
-func NewFileService(file *model.File) FileUsecase {
+func NewFileService(input *model.Input) FileUsecase {
 	fs := &FileService{
-		File: file,
+		Input: input,
+		File:  model.MakeFile(input),
 	}
 	return fs
 }
