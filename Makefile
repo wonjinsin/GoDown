@@ -38,9 +38,6 @@ test: go test -v -cover ./...
 
 test-all: vet fmt lint
 
-build-gomod:
-	[ -f ./go.mod ] || go mod init $(PACKAGE)
-
 .PHONY: init
 init: 
 	go mod init $(PACKAGE)
@@ -50,8 +47,8 @@ tidy:
 	go mod tidy
 
 .PHONY: vendor
-vendor: tidy \
-	build-gomod \
+vendor: init \
+	tidy \
 	go mod vendor
 
 start:

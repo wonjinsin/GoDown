@@ -28,12 +28,12 @@ func (t *FileService) Do() {
 		fmt.Printf("Error occurred: %s", err.Error())
 	}
 
-	startNum := 1
+	startNum := 0
 	batchCount := 20
 	errCount := 0
 
 	for {
-		if errCount > 100 {
+		if errCount > 25 {
 			fmt.Println("File download done")
 			break
 		}
@@ -68,7 +68,7 @@ func (t *FileService) Do() {
 // DownloadFile ...
 func (t *FileService) DownloadFile(url string, filename string) error {
 	fmt.Println(fmt.Sprintf("filename: %s, url: %s", filename, url))
-	client, err := model.MakeClient(url)
+	client, err := model.MakeClient(url, t.Input.Origin)
 	if err != nil {
 		return err
 	}

@@ -15,7 +15,7 @@ import (
 type File struct {
 	Repo      string
 	URL       string
-	Separator string
+	Separator *string
 	Extension string
 	Folder    string
 }
@@ -27,7 +27,8 @@ func MakeFile(input *Input) *File {
 		URL:    input.URL,
 		Folder: input.Folder,
 	}
-	f.Extension = f.GetExtension()
+	f.SetSeparator(input.Separator)
+	f.SetExtension()
 	return f
 }
 
@@ -73,10 +74,15 @@ func (f File) getReplacedPath(path string, num uint64) (replaced string, err err
 func (f File) getReplacedFileName(fileName string, num uint64) string {
 	r := regexp.MustCompile(`^([0-9]+)$|(-[0-9]+)|(_[0-9]+)`)
 	arr := r.FindStringSubmatch(fileName)
-	var separator string = f.Separator
-	var separatorLen int = len(f.Separator)
+	var separator string
+	var separatorLen int
 
-	if separator != "" {
+	if f.Separator != nil {
+		separator = *f.Separator
+		separatorLen = len(separator)
+	}
+
+	if separator == "" {
 		for i, v := range arr {
 			if i == 0 || v == "" {
 				continue
@@ -132,14 +138,27 @@ func (f File) makeEmptyFile(filename string) (file *os.File, err error) {
 	return file, nil
 }
 
-// GetExtension ...
-func (f File) GetExtension() string {
+// SetSeparator ...
+func (f *File) SetSeparator(s *string) {
+	if s == nil {
+		return
+	}
+	f.Separator = s
+}
+
+// SetExtension ...
+func (f *File) SetExtension() {
 	r := regexp.MustCompile("\\.(\\w+)$|\\.(\\w+)\\?")
 	arr := r.FindStringSubmatch(f.URL)
 	if len(arr) < 2 {
-		return ""
+		return
 	}
-	return arr[1]
+	f.Extension = arr[1]
+}
+
+// GetExtension ...
+func (f File) GetExtension() string {
+	return f.Extension
 }
 
 // StartCmd ...

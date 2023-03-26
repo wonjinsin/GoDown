@@ -2,7 +2,8 @@ package model
 
 // Input ...
 type Input struct {
-	URL    string
-	Origin string
-	Folder string
+	URL       string
+	Origin    *string
+	Folder    string
+	Separator *string
 }
