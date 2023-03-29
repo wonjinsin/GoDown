@@ -33,7 +33,6 @@ func MakeClient(url string, origin *string) (client *Client, err error) {
 	}
 
 	req.Header.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:104.0) Gecko/20100101 Firefox/104.0")
-	req.Header.Add("Host", *origin)
 	req.Header.Add("origin", *origin)
 	req.Header.Add("referer", *origin)
 	req.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")

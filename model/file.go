@@ -163,8 +163,10 @@ func (f File) GetExtension() string {
 
 // StartCmd ...
 func (f *File) StartCmd() (err error) {
-	if _, err := exec.Command("/bin/sh", "ffmpeg.sh", fmt.Sprintf("%s/%s", f.Repo, f.Folder), f.Folder, f.Extension).Output(); err != nil {
+	result, err := exec.Command("/bin/sh", "ffmpeg.sh", fmt.Sprintf("%s/%s", f.Repo, f.Folder), f.Folder, f.Extension).Output()
+	if err != nil {
 		return err
 	}
+	fmt.Println(result)
 	return nil
 }

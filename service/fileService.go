@@ -29,11 +29,11 @@ func (t *FileService) Do() {
 	}
 
 	startNum := 0
-	batchCount := 20
+	batchCount := 128
 	errCount := 0
 
 	for {
-		if errCount > 25 {
+		if errCount > batchCount {
 			fmt.Println("File download done")
 			break
 		}
@@ -79,12 +79,12 @@ func (t *FileService) DownloadFile(url string, filename string) error {
 		return err
 	}
 	if resp.StatusCode != 200 {
-		fmt.Println("Request failed: Status Code is not valid", "resp", resp)
+		fmt.Println("Request failed: Status Code is not valid", "url", url, "resp", resp)
 		return fmt.Errorf("Request failed: Status Code is not valid")
 	}
 
 	if resp.ContentLength <= 0 {
-		fmt.Println("Request failed: Content length is not valid", "resp", resp)
+		fmt.Println("Request failed: Content length is not valid", "url", url)
 		return fmt.Errorf("Request failed: Content length is not valid")
 	}
 

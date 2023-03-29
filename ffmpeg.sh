@@ -2,5 +2,7 @@
 
 cd $1; 
 find *.$3 | sort -n | sed 's:\\ :\\\\\\ :g'| sed 's/^/file /' > fl.txt; 
-ffmpeg -f concat -i fl.txt -c copy $2.mp4; 
-rm fl.txt *.$3
+err=`ffmpeg -v error -f concat -i fl.txt -c copy -y $2.mp4 2>&1 | grep -E "Impossible|Invalid"`;
+if [ "$err" == "" ]; then
+	rm fl.txt *.$3;
+fi
