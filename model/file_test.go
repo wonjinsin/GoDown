@@ -1,6 +1,7 @@
 package model
 
 import (
+	"cheetah/util"
 	"fmt"
 	"testing"
 )
@@ -8,7 +9,7 @@ import (
 var testFile *File = &File{
 	Repo:      "Repo",
 	URL:       "https://youtube.com/video/11.ts",
-	Separator: "11",
+	Separator: util.ToPointer("11"),
 	Folder:    "video",
 }
 
