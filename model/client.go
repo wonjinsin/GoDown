@@ -1,6 +1,7 @@
 package model
 
 import (
+	"cheetah/util"
 	"errors"
 	"net/http"
 	"regexp"
@@ -18,21 +19,21 @@ func (c *Client) Do() (*http.Response, error) {
 }
 
 // MakeClient ...
-func MakeClient(url string, origin *string) (client *Client, err error) {
+func MakeClient(url string, host *string, origin *string) (client *Client, err error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, errors.New("MakeClient failed")
 	}
 
 	if origin == nil {
-		o := getDomainFromURL(url)
-		origin = &o
+		origin = util.ToPointer(getDomainFromURL(url))
 	}
-	if origin == nil {
-		return nil, errors.New("origin is invalid")
+	if host == nil {
+		host = util.ToPointer(getDomainFromURL(url))
 	}
 
 	req.Header.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:104.0) Gecko/20100101 Firefox/104.0")
+	req.Header.Add("host", *host)
 	req.Header.Add("origin", *origin)
 	req.Header.Add("referer", *origin)
 	req.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")

@@ -1,15 +1,13 @@
 package model
 
 import (
-	"cheetah/util"
-	"fmt"
 	"testing"
 )
 
-var testFile *File = &File{
+var testFile File = File{
 	Repo:      "Repo",
 	URL:       "https://youtube.com/video/11.ts",
-	Separator: util.ToPointer("11"),
+	Extension: "ts",
 	Folder:    "video",
 }
 
@@ -35,7 +33,6 @@ func TestGetReplacedFileName(t *testing.T) {
 	}
 
 	fileName = testFile.getReplacedFileName("test-1", 3)
-	fmt.Println(fileName)
 	if fileName != "test-3" {
 		t.Errorf("fileName is not valid")
 	}
@@ -44,10 +41,15 @@ func TestGetReplacedFileName(t *testing.T) {
 	if fileName != "test_3" {
 		t.Errorf("fileName is not valid")
 	}
+
+	fileName = testFile.getReplacedFileName("test-1-a1-b1", 3)
+	if fileName != "test-3-a1-b1" {
+		t.Errorf("fileName is not valid")
+	}
 }
 
-func TestGetExtension(t *testing.T) {
-	fileName := testFile.GetExtension()
+func TestSetExtension(t *testing.T) {
+	fileName := testFile.SetExtension()
 	if fileName != "ts" {
 		t.Errorf("GetExtension is not valid")
 	}

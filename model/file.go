@@ -147,13 +147,20 @@ func (f *File) SetSeparator(s *string) {
 }
 
 // SetExtension ...
-func (f *File) SetExtension() {
+func (f *File) SetExtension() string {
 	r := regexp.MustCompile("\\.(\\w+)$|\\.(\\w+)\\?")
 	arr := r.FindStringSubmatch(f.URL)
 	if len(arr) < 2 {
-		return
+		return ""
 	}
-	f.Extension = arr[1]
+	for i, v := range arr {
+		if i == 0 || v == "" {
+			continue
+		}
+		f.Extension = v
+		break
+	}
+	return f.Extension
 }
 
 // GetExtension ...

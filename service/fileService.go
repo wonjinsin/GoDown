@@ -68,7 +68,7 @@ func (t *FileService) Do() {
 // DownloadFile ...
 func (t *FileService) DownloadFile(url string, filename string) error {
 	fmt.Println(fmt.Sprintf("filename: %s, url: %s", filename, url))
-	client, err := model.MakeClient(url, t.Input.Origin)
+	client, err := model.MakeClient(url, t.Input.Host, t.Input.Origin)
 	if err != nil {
 		return err
 	}

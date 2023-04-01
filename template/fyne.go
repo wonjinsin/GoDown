@@ -16,12 +16,13 @@ func ShowMain() {
 	w := a.NewWindow("goDown")
 	w.Resize(fyne.NewSize(600, 400))
 
-	url, folder, separator, origin := widget.NewEntry(), widget.NewEntry(), widget.NewEntry(), widget.NewEntry()
+	url, folder, separator, host, origin := widget.NewEntry(), widget.NewEntry(), widget.NewEntry(), widget.NewEntry(), widget.NewEntry()
 	form := &widget.Form{
 		Items: []*widget.FormItem{
 			{Text: "URL", Widget: url},
 			{Text: "Folder", Widget: folder},
 			{Text: "Separator(optional)", Widget: separator},
+			{Text: "Host(optional)", Widget: host},
 			{Text: "Origin(optional)", Widget: origin},
 		},
 		OnSubmit: func() {
@@ -31,6 +32,9 @@ func ShowMain() {
 			}
 			if separator.Text != "" {
 				input.Separator = &separator.Text
+			}
+			if host.Text != "" {
+				input.Host = &host.Text
 			}
 			if origin.Text != "" {
 				input.Origin = &origin.Text

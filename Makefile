@@ -34,7 +34,8 @@ build-lint:
 	go mod vendor
 
 .PHONY: test
-test: go test -v -cover ./...
+test: 
+	go test -v -cover ./...
 
 test-all: vet fmt lint
 
