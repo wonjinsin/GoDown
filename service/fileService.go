@@ -22,10 +22,11 @@ func NewFileService(input *model.Input) FileUsecase {
 }
 
 // Do ...
-func (t *FileService) Do() {
-	err := t.File.MakeDirectory()
-	if err != nil {
+func (t *FileService) Do(c chan int) (err error) {
+
+	if err = t.File.MakeDirectory(); err != nil {
 		fmt.Printf("Error occurred: %s", err.Error())
+		return err
 	}
 
 	startNum := 0
@@ -57,12 +58,15 @@ func (t *FileService) Do() {
 		}
 
 		startNum += batchCount
+		c <- int(startNum)
 		wg.Wait()
 	}
 
-	if err := t.File.StartCmd(); err != nil {
+	if err = t.File.StartCmd(); err != nil {
 		fmt.Println(err.Error())
+		return err
 	}
+	return nil
 }
 
 // DownloadFile ...

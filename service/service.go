@@ -2,5 +2,5 @@ package service
 
 // FileUsecase ...
 type FileUsecase interface {
-	Do()
+	Do(c chan int) (err error)
 }

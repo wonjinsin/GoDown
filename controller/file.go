@@ -6,7 +6,7 @@ import (
 )
 
 // DoFileDownload ...
-func DoFileDownload(input *model.Input) {
+func DoFileDownload(input *model.Input, c chan int) (err error) {
 	svc := service.NewFileService(input)
-	svc.Do()
+	return svc.Do(c)
 }
