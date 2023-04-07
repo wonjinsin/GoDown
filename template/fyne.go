@@ -78,7 +78,7 @@ func ShowDownloading(a fyne.App) (w fyne.Window) {
 // SetDownloadingContents ...
 func SetDownloadingContents(w fyne.Window, c chan int) {
 	for i := range c {
-		text := canvas.NewText(fmt.Sprintf("%d", i), color.Black)
+		text := canvas.NewText(fmt.Sprintf("Downloading now ... %d", i), color.Black)
 		text.Alignment = fyne.TextAlignTrailing
 		text.TextStyle = fyne.TextStyle{Monospace: true}
 		content := container.New(layout.NewCenterLayout(), text)
