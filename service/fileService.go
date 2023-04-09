@@ -3,6 +3,7 @@ package service
 import (
 	"cheetah/model"
 	"fmt"
+	"net/http"
 	"sync"
 )
 
@@ -29,7 +30,7 @@ func (t *FileService) Do(c chan int) (err error) {
 	}
 
 	startNum := 0
-	batchCount := 128
+	batchCount := 256
 	errCount := 0
 	errMax := 10
 
@@ -44,16 +45,17 @@ func (t *FileService) Do(c chan int) (err error) {
 
 		for j := 0; j < batchCount; j++ {
 			go func(num uint64, wg *sync.WaitGroup) {
+				defer wg.Done()
 				url, err := t.File.GetReplacedURL(uint64(num))
 				if err != nil {
 					fmt.Printf("Error occured: %s", err.Error())
 					errCount++
+					return
 				}
 				if err := t.DownloadFile(url, fmt.Sprintf("%d.%s", num, t.File.GetExtension())); err != nil {
 					fmt.Printf("Error occured: %s", err.Error())
 					errCount++
 				}
-				wg.Done()
 			}(uint64(startNum+j), &wg)
 		}
 
@@ -78,7 +80,11 @@ func (t *FileService) DownloadFile(url string, filename string) error {
 	}
 
 	resp, err := client.Do()
-	defer resp.Body.Close()
+	defer func(resp *http.Response) {
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
+	}(resp)
 
 	if err != nil {
 		fmt.Println(fmt.Printf("Error occurred: %s", err.Error()))

@@ -55,7 +55,7 @@ vendor: init \
 start:
 	@$(BIN)/$(PACKAGE)
 
-all: init tidy vendor build
+all: vendor build
 
 clean:; $(info cleaning…) @ 
 	@rm -rf vendor bin
