@@ -1,7 +1,11 @@
 #!/bin/bash
+fl="fl.txt"
+msg="No such|Impossible|Invalid"
 cd $1; 
-find *.$3 | sort -n | sed 's:\\ :\\\\\\ :g'| sed 's/^/file /' > fl.txt; 
-err=`ffmpeg -v error -f concat -i fl.txt -c copy -y $2.mp4 2>&1 | grep -E "Impossible|Invalid"`;
+find *.$3 | sort -n | sed 's:\\ :\\\\\\ :g'| sed 's/^/file /' > $fl; 
+err=`ffmpeg -v error -f concat -i $fl -c copy -y $2.mp4 2>&1 | grep -E "$msg"`;
 if [ "$err" == "" ]; then
-	# rm fl.txt *.$3;
+	rm $fl *.$3;
+	exit 0;
 fi
+exit 1;

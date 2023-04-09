@@ -23,7 +23,6 @@ func NewFileService(input *model.Input) FileUsecase {
 
 // Do ...
 func (t *FileService) Do(c chan int) (err error) {
-
 	if err = t.File.MakeDirectory(); err != nil {
 		fmt.Printf("Error occurred: %s", err.Error())
 		return err
@@ -32,9 +31,10 @@ func (t *FileService) Do(c chan int) (err error) {
 	startNum := 0
 	batchCount := 128
 	errCount := 0
+	errMax := 10
 
 	for {
-		if errCount > batchCount {
+		if errCount > errMax {
 			fmt.Println("File download done")
 			break
 		}
@@ -78,6 +78,8 @@ func (t *FileService) DownloadFile(url string, filename string) error {
 	}
 
 	resp, err := client.Do()
+	defer resp.Body.Close()
+
 	if err != nil {
 		fmt.Println(fmt.Printf("Error occurred: %s", err.Error()))
 		return err

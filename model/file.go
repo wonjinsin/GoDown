@@ -121,7 +121,6 @@ func (f File) MakeFile(filename string, body io.ReadCloser) (err error) {
 	defer file.Close()
 
 	_, err = io.Copy(file, body)
-	defer body.Close()
 	if err != nil {
 		return err
 	}
@@ -170,11 +169,10 @@ func (f File) GetExtension() string {
 
 // StartCmd ...
 func (f File) StartCmd() (err error) {
-	result, err := exec.Command("/bin/sh", "ffmpeg.sh", fmt.Sprintf("%s/%s", f.Repo, f.Folder), f.Folder, f.Extension).Output()
+	_, err = exec.Command("/bin/sh", "ffmpeg.sh", fmt.Sprintf("%s/%s", f.Repo, f.Folder), f.Folder, f.Extension).Output()
 	if err != nil {
 		fmt.Printf("Error occurred: %s", err.Error())
 		return err
 	}
-	fmt.Println(result)
 	return nil
 }

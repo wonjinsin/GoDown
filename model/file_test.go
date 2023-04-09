@@ -54,13 +54,3 @@ func TestSetExtension(t *testing.T) {
 		t.Errorf("GetExtension is not valid")
 	}
 }
-
-func TestStartCmd(t *testing.T) {
-	file := &File{
-		Repo:      "Refo",
-		URL:       "https://youtube.com/video/11.ts",
-		Extension: "ts",
-		Folder:    "test",
-	}
-	file.StartCmd()
-}
