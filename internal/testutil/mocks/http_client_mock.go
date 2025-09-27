@@ -44,8 +44,8 @@ type HeadCall struct {
 type DownloadCall struct {
 	Ctx              context.Context
 	URL              string
-	FilePath         string
-	ProgressCallback func(downloaded, total int64)
+	Headers          map[string]string
+	ProgressCallback repository.ProgressCallback
 }
 
 type ProgressUpdate struct {
@@ -82,9 +82,10 @@ func (m *HTTPClientMock) Get(ctx context.Context, url string, headers map[string
 	// Default response
 	return &repository.HTTPResponse{
 		StatusCode:    200,
-		Headers:       map[string][]string{"Content-Type": {"text/html"}},
+		Headers:       map[string]string{"Content-Type": "text/html"},
 		Body:          io.NopCloser(strings.NewReader("mock response body")),
 		ContentLength: 18,
+		URL:           url,
 	}, nil
 }
 
@@ -110,31 +111,32 @@ func (m *HTTPClientMock) Head(ctx context.Context, url string, headers map[strin
 	// Default response
 	return &repository.HTTPResponse{
 		StatusCode:    200,
-		Headers:       map[string][]string{"Content-Length": {"1024"}},
+		Headers:       map[string]string{"Content-Length": "1024"},
 		Body:          nil,
 		ContentLength: 1024,
+		URL:           url,
 	}, nil
 }
 
 // Download mocks file download
-func (m *HTTPClientMock) Download(ctx context.Context, url, filepath string) error {
-	return m.DownloadWithProgress(ctx, url, filepath, nil)
+func (m *HTTPClientMock) Download(ctx context.Context, url string, headers map[string]string) (*repository.HTTPResponse, error) {
+	return m.DownloadWithProgress(ctx, url, headers, nil)
 }
 
 // DownloadWithProgress mocks file download with progress tracking
-func (m *HTTPClientMock) DownloadWithProgress(ctx context.Context, url, filepath string, progressCallback func(downloaded, total int64)) error {
+func (m *HTTPClientMock) DownloadWithProgress(ctx context.Context, url string, headers map[string]string, progressCallback repository.ProgressCallback) (*repository.HTTPResponse, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	m.downloadCalls = append(m.downloadCalls, DownloadCall{
 		Ctx:              ctx,
 		URL:              url,
-		FilePath:         filepath,
+		Headers:          headers,
 		ProgressCallback: progressCallback,
 	})
 
 	if m.downloadError != nil {
-		return m.downloadError
+		return nil, m.downloadError
 	}
 
 	// Simulate progress updates if callback is provided
@@ -152,7 +154,14 @@ func (m *HTTPClientMock) DownloadWithProgress(ctx context.Context, url, filepath
 		}()
 	}
 
-	return nil
+	// Default response
+	return &repository.HTTPResponse{
+		StatusCode:    200,
+		Headers:       map[string]string{"Content-Type": "application/octet-stream"},
+		Body:          io.NopCloser(strings.NewReader("mock file content")),
+		ContentLength: 17,
+		URL:           url,
+	}, nil
 }
 
 // SetTimeout mocks setting timeout
@@ -160,6 +169,20 @@ func (m *HTTPClientMock) SetTimeout(timeout time.Duration) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.timeout = timeout
+}
+
+// SetUserAgent sets the user agent string
+func (m *HTTPClientMock) SetUserAgent(userAgent string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	// Mock implementation - just store it
+}
+
+// SetRetryPolicy sets the retry policy
+func (m *HTTPClientMock) SetRetryPolicy(maxRetries int, retryDelay time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	// Mock implementation - just store it
 }
 
 // Mock behavior configuration methods

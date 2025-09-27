@@ -44,9 +44,9 @@ func TestLogger() zerolog.Logger {
 // CreateTestDownloadJob creates a test download job
 func CreateTestDownloadJob() *entity.DownloadJob {
 	job := entity.NewDownloadJob(
-		"test-job-1",
 		"https://example.com/file{}.jpg",
 		"test-folder",
+		"test-repo",
 	)
 	return job
 }

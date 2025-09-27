@@ -3,6 +3,7 @@ package http
 import (
 	"cheetah/internal/domain/repository"
 	"cheetah/pkg/logger"
+	"cheetah/pkg/middleware"
 	"cheetah/util"
 	"context"
 	"fmt"
@@ -15,11 +16,12 @@ import (
 
 // httpClient implements the HTTPClient interface
 type httpClient struct {
-	client     *http.Client
-	userAgent  string
-	maxRetries int
-	retryDelay time.Duration
-	logger     zerolog.Logger
+	client            *http.Client
+	userAgent         string
+	maxRetries        int
+	retryDelay        time.Duration
+	logger            zerolog.Logger
+	loggingMiddleware *middleware.LoggingMiddleware
 }
 
 // NewHTTPClient creates a new HTTP client
@@ -34,10 +36,11 @@ func NewHTTPClient(config repository.HTTPClientConfig) repository.HTTPClient {
 				return nil
 			},
 		},
-		userAgent:  config.UserAgent,
-		maxRetries: config.MaxRetries,
-		retryDelay: config.RetryDelay,
-		logger:     logger.GetLogger("http_client"),
+		userAgent:         config.UserAgent,
+		maxRetries:        config.MaxRetries,
+		retryDelay:        config.RetryDelay,
+		logger:            logger.GetLogger("http_client"),
+		loggingMiddleware: middleware.NewLoggingMiddleware(),
 	}
 }
 
@@ -129,7 +132,10 @@ func (hc *httpClient) doRequest(ctx context.Context, method, url string, headers
 			Int("attempt", attempt+1).
 			Msg("Sending HTTP request")
 
+		start := time.Now()
 		resp, err := hc.client.Do(req)
+		duration := time.Since(start)
+
 		if err != nil {
 			lastErr = err
 			hc.logger.Warn().
@@ -137,8 +143,12 @@ func (hc *httpClient) doRequest(ctx context.Context, method, url string, headers
 				Str("url", url).
 				Int("attempt", attempt+1).
 				Msg("HTTP request failed")
+			hc.loggingMiddleware.LogHTTPRequest(ctx, method, url, 0, duration, 0)
 			continue
 		}
+
+		// Log successful request
+		hc.loggingMiddleware.LogHTTPRequest(ctx, method, url, resp.StatusCode, duration, resp.ContentLength)
 
 		// Convert to our response format
 		httpResp := &repository.HTTPResponse{

@@ -13,24 +13,23 @@ type MediaProcessorMock struct {
 	// Call tracking
 	processMediaFilesCalls []ProcessMediaFilesCall
 	extractMetadataCalls   []ExtractMetadataCall
-	generateChecksumCalls  []GenerateChecksumCall
-	cleanupTempFilesCalls  []CleanupTempFilesCall
 
 	// Behavior configuration
-	processMediaFilesError error
-	extractMetadataResult  *repository.MediaMetadata
-	extractMetadataError   error
-	generateChecksumResult string
-	generateChecksumError  error
-	cleanupTempFilesError  error
+	processFilesError     error
+	extractMetadataResult map[string]interface{}
+	extractMetadataError  error
+	getDurationResult     float64
+	getDurationError      error
+	convertFormatError    error
+	compressFileError     error
 }
 
 // Call structs for tracking
 type ProcessMediaFilesCall struct {
-	Ctx         context.Context
-	InputFiles  []string
-	OutputFile  string
-	ProcessType string
+	Ctx            context.Context
+	InputDir       string
+	OutputFilename string
+	Extension      string
 }
 
 type ExtractMetadataCall struct {
@@ -38,38 +37,36 @@ type ExtractMetadataCall struct {
 	FilePath string
 }
 
-type GenerateChecksumCall struct {
-	Ctx      context.Context
-	FilePath string
-}
-
-type CleanupTempFilesCall struct {
-	Ctx       context.Context
-	FilePaths []string
-}
-
 // NewMediaProcessorMock creates a new media processor mock
 func NewMediaProcessorMock() *MediaProcessorMock {
 	return &MediaProcessorMock{}
 }
 
-// ProcessMediaFiles mocks processing media files
-func (m *MediaProcessorMock) ProcessMediaFiles(ctx context.Context, inputFiles []string, outputFile, processType string) error {
+// ProcessFiles mocks processing media files
+func (m *MediaProcessorMock) ProcessFiles(ctx context.Context, inputDir, outputFilename, extension string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	m.processMediaFilesCalls = append(m.processMediaFilesCalls, ProcessMediaFilesCall{
-		Ctx:         ctx,
-		InputFiles:  inputFiles,
-		OutputFile:  outputFile,
-		ProcessType: processType,
+		Ctx:            ctx,
+		InputDir:       inputDir,
+		OutputFilename: outputFilename,
+		Extension:      extension,
 	})
 
-	return m.processMediaFilesError
+	return m.processFilesError
+}
+
+// ValidateMediaFile mocks validating a media file
+func (m *MediaProcessorMock) ValidateMediaFile(ctx context.Context, filePath string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return nil
 }
 
 // ExtractMetadata mocks extracting metadata from a file
-func (m *MediaProcessorMock) ExtractMetadata(ctx context.Context, filePath string) (*repository.MediaMetadata, error) {
+func (m *MediaProcessorMock) ExtractMetadata(ctx context.Context, filePath string) (map[string]interface{}, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -87,58 +84,55 @@ func (m *MediaProcessorMock) ExtractMetadata(ctx context.Context, filePath strin
 	}
 
 	// Default metadata
-	return &repository.MediaMetadata{
-		Duration:   "00:10:00",
-		Resolution: "1920x1080",
-		Bitrate:    "5000kbps",
-		Format:     "mp4",
-		Size:       1024 * 1024, // 1MB
+	return map[string]interface{}{
+		"duration":   "00:10:00",
+		"resolution": "1920x1080",
+		"bitrate":    "5000kbps",
+		"format":     "mp4",
+		"size":       1024 * 1024, // 1MB
 	}, nil
 }
 
-// GenerateChecksum mocks generating a checksum for a file
-func (m *MediaProcessorMock) GenerateChecksum(ctx context.Context, filePath string) (string, error) {
+// GetDuration mocks getting file duration
+func (m *MediaProcessorMock) GetDuration(ctx context.Context, filePath string) (float64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.generateChecksumCalls = append(m.generateChecksumCalls, GenerateChecksumCall{
-		Ctx:      ctx,
-		FilePath: filePath,
-	})
-
-	if m.generateChecksumError != nil {
-		return "", m.generateChecksumError
+	if m.getDurationError != nil {
+		return 0, m.getDurationError
 	}
 
-	if m.generateChecksumResult != "" {
-		return m.generateChecksumResult, nil
+	if m.getDurationResult != 0 {
+		return m.getDurationResult, nil
 	}
 
-	// Default checksum
-	return "abcdef1234567890", nil
+	return 600.0, nil // 10 minutes
 }
 
-// CleanupTempFiles mocks cleaning up temporary files
-func (m *MediaProcessorMock) CleanupTempFiles(ctx context.Context, filePaths []string) error {
+// ConvertFormat mocks converting file format
+func (m *MediaProcessorMock) ConvertFormat(ctx context.Context, inputPath, outputPath, format string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.cleanupTempFilesCalls = append(m.cleanupTempFilesCalls, CleanupTempFilesCall{
-		Ctx:       ctx,
-		FilePaths: filePaths,
-	})
+	return m.convertFormatError
+}
 
-	return m.cleanupTempFilesError
+// CompressFile mocks compressing a file
+func (m *MediaProcessorMock) CompressFile(ctx context.Context, inputPath, outputPath string, quality int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.compressFileError
 }
 
 // Mock behavior configuration methods
-func (m *MediaProcessorMock) SetProcessMediaFilesError(err error) {
+func (m *MediaProcessorMock) SetProcessFilesError(err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.processMediaFilesError = err
+	m.processFilesError = err
 }
 
-func (m *MediaProcessorMock) SetExtractMetadataResult(metadata *repository.MediaMetadata) {
+func (m *MediaProcessorMock) SetExtractMetadataResult(metadata map[string]interface{}) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.extractMetadataResult = metadata
@@ -150,22 +144,28 @@ func (m *MediaProcessorMock) SetExtractMetadataError(err error) {
 	m.extractMetadataError = err
 }
 
-func (m *MediaProcessorMock) SetGenerateChecksumResult(checksum string) {
+func (m *MediaProcessorMock) SetGetDurationResult(duration float64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.generateChecksumResult = checksum
+	m.getDurationResult = duration
 }
 
-func (m *MediaProcessorMock) SetGenerateChecksumError(err error) {
+func (m *MediaProcessorMock) SetGetDurationError(err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.generateChecksumError = err
+	m.getDurationError = err
 }
 
-func (m *MediaProcessorMock) SetCleanupTempFilesError(err error) {
+func (m *MediaProcessorMock) SetConvertFormatError(err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.cleanupTempFilesError = err
+	m.convertFormatError = err
+}
+
+func (m *MediaProcessorMock) SetCompressFileError(err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.compressFileError = err
 }
 
 // Call verification methods
@@ -181,18 +181,6 @@ func (m *MediaProcessorMock) GetExtractMetadataCalls() []ExtractMetadataCall {
 	return append([]ExtractMetadataCall{}, m.extractMetadataCalls...)
 }
 
-func (m *MediaProcessorMock) GetGenerateChecksumCalls() []GenerateChecksumCall {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return append([]GenerateChecksumCall{}, m.generateChecksumCalls...)
-}
-
-func (m *MediaProcessorMock) GetCleanupTempFilesCalls() []CleanupTempFilesCall {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return append([]CleanupTempFilesCall{}, m.cleanupTempFilesCalls...)
-}
-
 // Reset clears all call history and mock data
 func (m *MediaProcessorMock) Reset() {
 	m.mu.Lock()
@@ -200,15 +188,14 @@ func (m *MediaProcessorMock) Reset() {
 
 	m.processMediaFilesCalls = nil
 	m.extractMetadataCalls = nil
-	m.generateChecksumCalls = nil
-	m.cleanupTempFilesCalls = nil
 
-	m.processMediaFilesError = nil
+	m.processFilesError = nil
 	m.extractMetadataResult = nil
 	m.extractMetadataError = nil
-	m.generateChecksumResult = ""
-	m.generateChecksumError = nil
-	m.cleanupTempFilesError = nil
+	m.getDurationResult = 0
+	m.getDurationError = nil
+	m.convertFormatError = nil
+	m.compressFileError = nil
 }
 
 // Helper methods for testing
@@ -224,19 +211,7 @@ func (m *MediaProcessorMock) WasExtractMetadataCalled() bool {
 	return len(m.extractMetadataCalls) > 0
 }
 
-func (m *MediaProcessorMock) WasGenerateChecksumCalled() bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return len(m.generateChecksumCalls) > 0
-}
-
-func (m *MediaProcessorMock) WasCleanupTempFilesCalled() bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return len(m.cleanupTempFilesCalls) > 0
-}
-
-func (m *MediaProcessorMock) ProcessMediaFilesCallCount() int {
+func (m *MediaProcessorMock) ProcessFilesCallCount() int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return len(m.processMediaFilesCalls)
@@ -246,18 +221,6 @@ func (m *MediaProcessorMock) ExtractMetadataCallCount() int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return len(m.extractMetadataCalls)
-}
-
-func (m *MediaProcessorMock) GenerateChecksumCallCount() int {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return len(m.generateChecksumCalls)
-}
-
-func (m *MediaProcessorMock) CleanupTempFilesCallCount() int {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return len(m.cleanupTempFilesCalls)
 }
 
 // Verify interface compliance

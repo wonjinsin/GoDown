@@ -7,6 +7,7 @@ import (
 	"cheetah/internal/domain/service"
 	contextPkg "cheetah/pkg/context"
 	"cheetah/pkg/logger"
+	"cheetah/pkg/metrics"
 	"cheetah/util"
 	"context"
 	"fmt"
@@ -31,6 +32,9 @@ type downloadUseCase struct {
 
 	// Context management
 	contextManager *contextPkg.Manager
+
+	// Metrics collection
+	metricsCollector *metrics.Collector
 }
 
 // NewDownloadUseCase creates a new download use case
@@ -43,14 +47,15 @@ func NewDownloadUseCase(
 ) service.DownloadService {
 	logger := logger.GetLogger("download_usecase")
 	return &downloadUseCase{
-		fileRepo:       fileRepo,
-		httpClient:     httpClient,
-		httpRepo:       httpRepo,
-		mediaProcessor: mediaProcessor,
-		config:         cfg,
-		logger:         logger,
-		progress:       make(map[string]*service.DownloadProgress),
-		contextManager: contextPkg.NewManager(logger),
+		fileRepo:         fileRepo,
+		httpClient:       httpClient,
+		httpRepo:         httpRepo,
+		mediaProcessor:   mediaProcessor,
+		config:           cfg,
+		logger:           logger,
+		progress:         make(map[string]*service.DownloadProgress),
+		contextManager:   contextPkg.NewManager(logger),
+		metricsCollector: metrics.NewCollector(logger),
 	}
 }
 
@@ -125,6 +130,13 @@ func (du *downloadUseCase) StartDownload(ctx context.Context, job *entity.Downlo
 	job.Start()
 	du.updateProgressStatus(job.ID, job.Status.String())
 
+	// Start metrics collection for this session
+	sequence, err := job.GetFileSequence()
+	if err == nil {
+		estimatedFiles := sequence.EstimateFileCount()
+		du.metricsCollector.StartDownloadSession(job.ID, estimatedFiles)
+	}
+
 	// Create download directory
 	downloadPath := job.GetSavePath()
 	if err := du.fileRepo.CreateDirectory(downloadCtx, downloadPath); err != nil {
@@ -133,12 +145,15 @@ func (du *downloadUseCase) StartDownload(ctx context.Context, job *entity.Downlo
 		return err
 	}
 
-	// Get file sequence
-	sequence, err := job.GetFileSequence()
-	if err != nil {
-		job.Fail(fmt.Errorf("failed to analyze file sequence: %w", err))
-		du.updateProgressError(job.ID, err.Error())
-		return err
+	// Get file sequence (already retrieved above for metrics)
+	if sequence == nil {
+		sequence, err = job.GetFileSequence()
+		if err != nil {
+			job.Fail(fmt.Errorf("failed to analyze file sequence: %w", err))
+			du.updateProgressError(job.ID, err.Error())
+			du.metricsCollector.CompleteDownloadSession(job.ID, false)
+			return err
+		}
 	}
 
 	// Start concurrent download with cancellation support
@@ -146,10 +161,12 @@ func (du *downloadUseCase) StartDownload(ctx context.Context, job *entity.Downlo
 		if downloadCtx.Err() != nil {
 			job.Cancel()
 			du.updateProgressStatus(job.ID, job.Status.String())
+			du.metricsCollector.CancelDownloadSession(job.ID)
 			return fmt.Errorf("download cancelled: %w", downloadCtx.Err())
 		}
 		job.Fail(err)
 		du.updateProgressError(job.ID, err.Error())
+		du.metricsCollector.CompleteDownloadSession(job.ID, false)
 		return err
 	}
 
@@ -168,6 +185,7 @@ func (du *downloadUseCase) StartDownload(ctx context.Context, job *entity.Downlo
 	// Mark job as completed
 	job.Complete()
 	du.updateProgressStatus(job.ID, job.Status.String())
+	du.metricsCollector.CompleteDownloadSession(job.ID, true)
 
 	du.logger.Info().
 		Str("job_id", job.ID).
@@ -232,7 +250,7 @@ func (du *downloadUseCase) GetDownloadStatus(ctx context.Context, jobID string) 
 	}
 
 	if progress.Error != "" {
-		job.Error = fmt.Errorf(progress.Error)
+		job.Error = fmt.Errorf("%s", progress.Error)
 	}
 
 	return job, nil
