@@ -36,13 +36,13 @@
 - [x] Create repository implementations with dependency injection
 - [x] Move file I/O operations from model to repository
 
-### Commit 5: Use Case Layer Creation
+### Commit 5: Use Case Layer Creation ✅
 
-- [ ] Create `internal/usecase/` directory
-- [ ] Implement `DownloadUseCase` interface
-- [ ] Move business logic from service to use case layer
-- [ ] Add proper dependency injection for use cases
-- [ ] Implement context propagation for cancellation support
+- [x] Create `internal/usecase/` directory
+- [x] Implement `DownloadUseCase` interface
+- [x] Move business logic from service to use case layer
+- [x] Add proper dependency injection for use cases
+- [x] Implement context propagation for cancellation support
 
 ---
 
