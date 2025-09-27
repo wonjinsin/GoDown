@@ -48,13 +48,13 @@
 
 ## 🎯 Phase 3: Service Layer Refactoring
 
-### Commit 6: Service Layer Cleanup
+### Commit 6: Service Layer Cleanup ✅
 
-- [ ] Refactor `FileService` to focus on orchestration only
-- [ ] Remove direct model dependencies from service
-- [ ] Implement proper interface segregation
-- [ ] Add timeout and cancellation support using context
-- [ ] Improve concurrent download management
+- [x] Refactor `FileService` to focus on orchestration only
+- [x] Remove direct model dependencies from service
+- [x] Implement proper interface segregation
+- [x] Add timeout and cancellation support using context
+- [x] Improve concurrent download management
 
 ### Commit 7: GUI Handler Separation
 

@@ -1,6 +1,4 @@
 package service
 
-// FileUsecase ...
-type FileUsecase interface {
-	Do(c chan int) (err error)
-}
+// This file is kept for backward compatibility
+// All interfaces have been moved to interfaces.go
