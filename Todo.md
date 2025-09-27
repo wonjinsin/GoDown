@@ -28,13 +28,13 @@
 - [x] Define domain interfaces: `FileRepository`, `HTTPClient`, `MediaProcessor`
 - [x] Move business rules to domain entities (URL generation, file naming logic)
 
-### Commit 4: Repository Pattern Implementation
+### Commit 4: Repository Pattern Implementation ✅
 
-- [ ] Create `internal/repository/` directory
-- [ ] Implement `FileRepository` interface for file system operations
-- [ ] Implement `HTTPRepository` interface for HTTP client operations
-- [ ] Create repository implementations with dependency injection
-- [ ] Move file I/O operations from model to repository
+- [x] Create `internal/repository/` directory
+- [x] Implement `FileRepository` interface for file system operations
+- [x] Implement `HTTPRepository` interface for HTTP client operations
+- [x] Create repository implementations with dependency injection
+- [x] Move file I/O operations from model to repository
 
 ### Commit 5: Use Case Layer Creation
 
