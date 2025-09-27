@@ -1,12 +1,13 @@
 package template
 
 import (
+	"cheetah/config"
 	"cheetah/controller"
 	"cheetah/model"
+	"cheetah/pkg/logger"
 	"cheetah/util"
 	"fmt"
 	"image/color"
-	"log"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -18,7 +19,7 @@ import (
 )
 
 // ShowMain ...
-func ShowMain() {
+func ShowMain(cfg *config.Config) {
 	a := app.NewWithID("goDown")
 	w := a.NewWindow("goDown")
 	w.Resize(fyne.NewSize(600, 400))
@@ -47,7 +48,14 @@ func ShowMain() {
 			if origin.Text != "" {
 				input.Origin = util.ToPointer(strings.TrimSpace(origin.Text))
 			}
-			log.Printf("input is: %+v\n", input)
+			guiLogger := logger.GetLogger("gui")
+			guiLogger.Info().
+				Str("url", input.URL).
+				Str("folder", input.Folder).
+				Interface("host", input.Host).
+				Interface("origin", input.Origin).
+				Interface("separator", input.Separator).
+				Msg("Starting download with user input")
 			c := make(chan int)
 			done := make(chan bool)
 
@@ -58,12 +66,14 @@ func ShowMain() {
 
 			go func() {
 				defer close(c)
-				if err := controller.DoFileDownload(input, c); err != nil {
+				if err := controller.DoFileDownload(input, c, cfg); err != nil {
+					guiLogger.Error().Err(err).Msg("Download failed")
 					fyne.Do(func() {
 						showResult(a, fmt.Sprintf("Failed: %s", err.Error()))
 						downloading.Close()
 					})
 				} else {
+					guiLogger.Info().Msg("Download completed successfully")
 					fyne.Do(func() {
 						showResult(a, "Success")
 						downloading.Close()

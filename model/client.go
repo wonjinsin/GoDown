@@ -1,6 +1,7 @@
 package model
 
 import (
+	"cheetah/config"
 	"cheetah/util"
 	"errors"
 	"net/http"
@@ -19,7 +20,7 @@ func (c *Client) Do() (*http.Response, error) {
 }
 
 // MakeClient ...
-func MakeClient(url string, host *string, origin *string) (client *Client, err error) {
+func MakeClient(url string, host *string, origin *string, cfg *config.Config) (client *Client, err error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, errors.New("MakeClient failed")
@@ -32,14 +33,18 @@ func MakeClient(url string, host *string, origin *string) (client *Client, err e
 		host = util.ToPointer(getDomainFromURL(url))
 	}
 
-	req.Header.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
+	req.Header.Add("User-Agent", cfg.Download.UserAgent)
 	req.Header.Add("host", *host)
 	req.Header.Add("Referer", *origin)
 	req.Header.Add("Connection", "keep-alive")
 	req.Header.Add("sec-ch-ua", "\"Google Chrome\";v=\"129\", \"Not=A?Brand\";v=\"8\", \"Chromium\";v=\"129\"")
 
+	httpClient := &http.Client{
+		Timeout: cfg.Download.HTTPTimeout,
+	}
+
 	return &Client{
-		Client:  &http.Client{},
+		Client:  httpClient,
 		Request: req,
 	}, nil
 }

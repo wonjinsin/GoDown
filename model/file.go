@@ -1,7 +1,9 @@
 package model
 
 import (
-	"errors"
+	"cheetah/config"
+	"cheetah/pkg/logger"
+	"cheetah/util"
 	"fmt"
 	"io"
 	"os"
@@ -9,6 +11,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/rs/zerolog"
 )
 
 // File ...
@@ -18,14 +22,16 @@ type File struct {
 	Separator *string
 	Extension string
 	Folder    string
+	logger    zerolog.Logger
 }
 
 // MakeFile ...
-func MakeFile(input *Input) *File {
+func MakeFile(input *Input, cfg *config.Config) *File {
 	f := &File{
-		Repo:   "repo",
+		Repo:   cfg.App.RepoDir,
 		URL:    input.URL,
 		Folder: input.Folder,
+		logger: logger.GetLogger("file_model"),
 	}
 	f.SetSeparator(input.Separator)
 	f.SetExtension()
@@ -61,12 +67,20 @@ func (f File) getReplacedPath(path string, num uint64) (replaced string, err err
 	r := regexp.MustCompile("\\w\\/([a-zA-Z0-9-_]+)\\.[a-z0-9]+")
 	arr := r.FindStringSubmatch(path)
 	if len(arr) < 2 {
-		return "", errors.New("Invalid path")
+		f.logger.Error().
+			Str("path", path).
+			Uint64("file_number", num).
+			Msg("Invalid path format - cannot extract filename")
+		return "", fmt.Errorf("%s: %s", util.ErrInvalidPath, path)
 	}
 	fileName := arr[1]
 	replacedFileName := f.getReplacedFileName(fileName, num)
 	if replacedFileName == "" {
-		return "", errors.New("Invalid replacedFileName")
+		f.logger.Error().
+			Str("filename", fileName).
+			Uint64("file_number", num).
+			Msg("Failed to generate replacement filename")
+		return "", fmt.Errorf("%s: %s", util.ErrInvalidFileName, fileName)
 	}
 	return strings.Replace(path, fmt.Sprintf("/%s.", fileName), fmt.Sprintf("/%s.", replacedFileName), 1), nil
 }
@@ -117,17 +131,29 @@ func (f File) MakeDirectory() (err error) {
 func (f File) MakeFile(filename string, body io.ReadCloser) (err error) {
 	file, err := f.makeEmptyFile(filename)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: %w", util.ErrMakeFile, err)
 	}
 	defer file.Close()
 
 	written, err := io.Copy(file, body)
 	if err != nil {
-		return err
+		f.logger.Error().
+			Err(err).
+			Str("filename", filename).
+			Msg("Failed to write file content")
+		return fmt.Errorf("%s: %w", util.ErrMakeFile, err)
 	}
 	if written == 0 {
-		return errors.New("File is empty")
+		f.logger.Warn().
+			Str("filename", filename).
+			Msg("Downloaded file is empty")
+		return fmt.Errorf("%s", util.ErrEmptyFile)
 	}
+
+	f.logger.Debug().
+		Str("filename", filename).
+		Int64("bytes_written", written).
+		Msg("File saved successfully")
 	return nil
 }
 
@@ -173,10 +199,29 @@ func (f File) GetExtension() string {
 
 // StartCmd ...
 func (f File) StartCmd() (err error) {
-	_, err = exec.Command("/bin/sh", "ffmpeg.sh", fmt.Sprintf("%s/%s", f.Repo, f.Folder), f.Folder, f.Extension).Output()
+	scriptPath := "ffmpeg.sh"
+	folderPath := fmt.Sprintf("%s/%s", f.Repo, f.Folder)
+
+	f.logger.Info().
+		Str("script", scriptPath).
+		Str("folder_path", folderPath).
+		Str("folder_name", f.Folder).
+		Str("extension", f.Extension).
+		Msg("Starting FFmpeg processing")
+
+	output, err := exec.Command("/bin/sh", scriptPath, folderPath, f.Folder, f.Extension).Output()
 	if err != nil {
-		fmt.Printf("Error occurred: %s", err.Error())
-		return err
+		f.logger.Error().
+			Err(err).
+			Str("script", scriptPath).
+			Str("folder_path", folderPath).
+			Str("output", string(output)).
+			Msg("FFmpeg command failed")
+		return fmt.Errorf("%s: %w", util.ErrFFmpegExecution, err)
 	}
+
+	f.logger.Info().
+		Str("output", string(output)).
+		Msg("FFmpeg processing completed successfully")
 	return nil
 }
