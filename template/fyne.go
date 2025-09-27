@@ -49,13 +49,31 @@ func ShowMain() {
 			}
 			log.Printf("input is: %+v\n", input)
 			c := make(chan int)
-			go setDownloadingContents(downloading, c)
-			if err := controller.DoFileDownload(input, c); err != nil {
-				showResult(a, fmt.Sprintf("Faild: %s", err.Error()))
-			} else {
-				showResult(a, "Success")
-			}
-			downloading.Close()
+			done := make(chan bool)
+
+			go func() {
+				setDownloadingContents(downloading, c)
+				done <- true
+			}()
+
+			go func() {
+				defer close(c)
+				if err := controller.DoFileDownload(input, c); err != nil {
+					fyne.Do(func() {
+						showResult(a, fmt.Sprintf("Failed: %s", err.Error()))
+						downloading.Close()
+					})
+				} else {
+					fyne.Do(func() {
+						showResult(a, "Success")
+						downloading.Close()
+					})
+				}
+			}()
+
+			go func() {
+				<-done
+			}()
 		},
 	}
 	w.SetContent(form)
@@ -77,11 +95,17 @@ func showDownloading(a fyne.App) (w fyne.Window) {
 
 func setDownloadingContents(w fyne.Window, c chan int) {
 	for i := range c {
-		text := canvas.NewText(fmt.Sprintf("Downloading now ... %d", i), color.Black)
-		text.Alignment = fyne.TextAlignTrailing
-		text.TextStyle = fyne.TextStyle{Monospace: true}
-		content := container.New(layout.NewCenterLayout(), text)
-		w.SetContent(content)
+		if w != nil {
+			fyne.Do(func() {
+				if w != nil {
+					text := canvas.NewText(fmt.Sprintf("Downloading now ... %d", i), color.Black)
+					text.Alignment = fyne.TextAlignTrailing
+					text.TextStyle = fyne.TextStyle{Monospace: true}
+					content := container.New(layout.NewCenterLayout(), text)
+					w.SetContent(content)
+				}
+			})
+		}
 	}
 }
 

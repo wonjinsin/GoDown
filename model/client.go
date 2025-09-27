@@ -32,19 +32,11 @@ func MakeClient(url string, host *string, origin *string) (client *Client, err e
 		host = util.ToPointer(getDomainFromURL(url))
 	}
 
-	req.Header.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:104.0) Gecko/20100101 Firefox/104.0")
+	req.Header.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
 	req.Header.Add("host", *host)
-	req.Header.Add("origin", *origin)
-	req.Header.Add("referer", *origin)
-	req.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
-	req.Header.Add("Accept-Language", "ko-KR,ko;q=0.8,en-US;q=0.5,en;q=0.3")
-	req.Header.Add("Accept-Encoding", "gzip, deflate, br")
-	req.Header.Add("Sec-Fetch-Dest", "document")
-	req.Header.Add("Sec-Fetch-Mode", "navigate")
-	req.Header.Add("Sec-Fetch-Site", "none")
-	req.Header.Add("Sec-Fetch-User", "?1")
-	req.Header.Add("Upgrade-Insecure-Requests", "1")
+	req.Header.Add("Referer", *origin)
 	req.Header.Add("Connection", "keep-alive")
+	req.Header.Add("sec-ch-ua", "\"Google Chrome\";v=\"129\", \"Not=A?Brand\";v=\"8\", \"Chromium\";v=\"129\"")
 
 	return &Client{
 		Client:  &http.Client{},

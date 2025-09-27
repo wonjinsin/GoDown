@@ -72,7 +72,7 @@ func (f File) getReplacedPath(path string, num uint64) (replaced string, err err
 }
 
 func (f File) getReplacedFileName(fileName string, num uint64) string {
-	r := regexp.MustCompile(`^([0-9]+)$|(-[0-9]+)|(_[0-9]+)`)
+	r := regexp.MustCompile(`^([0-9]+)$|(-[0-9]+)|(_[0-9]+)|([a-zA-Z]+[0-9]+)`)
 	arr := r.FindStringSubmatch(fileName)
 	var separator string
 	var separatorLen int
@@ -97,7 +97,8 @@ func (f File) getReplacedFileName(fileName string, num uint64) string {
 	}
 
 	replaced := regexp.MustCompile(`[0-9]+`).ReplaceAllString(separator, fmt.Sprintf("%0"+strconv.Itoa(separatorLen)+"d", num))
-	return r.ReplaceAllString(fileName, replaced)
+	// replaced := regexp.MustCompile(`[0-9]+`).ReplaceAllString(separator, fmt.Sprintf("%d", num))
+	return strings.Replace(fileName, separator, replaced, 1)
 }
 
 // MakeDirectory ...
@@ -120,9 +121,12 @@ func (f File) MakeFile(filename string, body io.ReadCloser) (err error) {
 	}
 	defer file.Close()
 
-	_, err = io.Copy(file, body)
+	written, err := io.Copy(file, body)
 	if err != nil {
 		return err
+	}
+	if written == 0 {
+		return errors.New("File is empty")
 	}
 	return nil
 }

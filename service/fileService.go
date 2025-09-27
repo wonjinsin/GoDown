@@ -2,6 +2,8 @@ package service
 
 import (
 	"cheetah/model"
+	"cheetah/util"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -30,9 +32,10 @@ func (t *FileService) Do(c chan int) (err error) {
 	}
 
 	startNum := 0
-	batchCount := 256
+	batchCount := 50
 	errCount := 0
-	errMax := 10
+	errMax := 100
+	routineErrMax := 10
 
 	for {
 		if errCount > errMax {
@@ -52,9 +55,17 @@ func (t *FileService) Do(c chan int) (err error) {
 					errCount++
 					return
 				}
-				if err := t.DownloadFile(url, fmt.Sprintf("%d.%s", num, t.File.GetExtension())); err != nil {
-					fmt.Printf("Error occured: %s", err.Error())
-					errCount++
+				for {
+					errCnt := 0
+					if err := t.DownloadFile(url, fmt.Sprintf("%d.%s", num, t.File.GetExtension())); err != nil {
+						if err.Error() == util.ErrorIsMakeFile && errCnt < routineErrMax {
+							fmt.Printf("error occured, try again %s", url)
+							continue
+						}
+						fmt.Printf("Error occured: %s", err.Error())
+						errCount++
+					}
+					return
 				}
 			}(uint64(startNum+j), &wg)
 		}
@@ -95,14 +106,21 @@ func (t *FileService) DownloadFile(url string, filename string) error {
 		return fmt.Errorf("Request failed: Status Code is not valid")
 	}
 
-	if resp.ContentLength <= 0 {
-		fmt.Println("Request failed: Content length is not valid", "url", url)
-		return fmt.Errorf("Request failed: Content length is not valid")
-	}
+	// if resp.ContentLength <= 0 {
+	// 	if err := t.File.MakeFile(filename, resp.Body); err != nil {
+	// 		fmt.Println("Request failed: Content length is not valid", "url", url, "length", resp.ContentLength)
+	// 		return fmt.Errorf("Request failed: Content length is not valid")
+	// 	}
+	// } else {
+	// 	if err := t.File.MakeFile(filename, resp.Body); err != nil {
+	// 		fmt.Printf("Error occurred: %s", err.Error())
+	// 		return errors.New("MakeFile failed")
+	// 	}
+	// }
 
 	if err := t.File.MakeFile(filename, resp.Body); err != nil {
 		fmt.Printf("Error occurred: %s", err.Error())
-		return err
+		return errors.New("MakeFile failed")
 	}
 
 	fmt.Println(fmt.Sprintf("Downloaded a file, filename: %s", filename))
