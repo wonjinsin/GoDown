@@ -21,12 +21,12 @@
 
 ## 🏗️ Phase 2: Clean Architecture Implementation
 
-### Commit 3: Domain Model Refactoring
+### Commit 3: Domain Model Refactoring ✅
 
-- [ ] Separate domain logic from infrastructure concerns in `model/`
-- [ ] Create domain entities: `DownloadJob`, `FileSequence`, `MediaFile`
-- [ ] Define domain interfaces: `FileRepository`, `HTTPClient`, `MediaProcessor`
-- [ ] Move business rules to domain entities (URL generation, file naming logic)
+- [x] Separate domain logic from infrastructure concerns in `model/`
+- [x] Create domain entities: `DownloadJob`, `FileSequence`, `MediaFile`
+- [x] Define domain interfaces: `FileRepository`, `HTTPClient`, `MediaProcessor`
+- [x] Move business rules to domain entities (URL generation, file naming logic)
 
 ### Commit 4: Repository Pattern Implementation
 
