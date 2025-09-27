@@ -2,131 +2,27 @@ package template
 
 import (
 	"cheetah/config"
-	"cheetah/controller"
-	"cheetah/model"
-	"cheetah/pkg/logger"
-	"cheetah/util"
-	"fmt"
-	"image/color"
-	"strings"
-
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/layout"
-	"fyne.io/fyne/v2/widget"
+	"cheetah/internal/handler/gui"
+	"cheetah/service"
+	"context"
+	"time"
 )
 
-// ShowMain ...
+// ShowMain shows the main GUI using the new handler architecture
 func ShowMain(cfg *config.Config) {
-	a := app.NewWithID("goDown")
-	w := a.NewWindow("goDown")
-	w.Resize(fyne.NewSize(600, 400))
+	ctx, cancel := context.WithTimeout(context.Background(), 24*time.Hour)
+	defer cancel()
 
-	url, folder, separator, host, origin := widget.NewEntry(), widget.NewEntry(), widget.NewEntry(), widget.NewEntry(), widget.NewEntry()
-	form := &widget.Form{
-		Items: []*widget.FormItem{
-			{Text: "URL", Widget: url},
-			{Text: "Folder", Widget: folder},
-			{Text: "Separator(optional)", Widget: separator},
-			{Text: "Host(optional)", Widget: host},
-			{Text: "Origin(optional)", Widget: origin},
-		},
-		OnSubmit: func() {
-			downloading := showDownloading(a)
-			input := &model.Input{
-				URL:    strings.TrimSpace(url.Text),
-				Folder: strings.TrimSpace(folder.Text),
-			}
-			if separator.Text != "" {
-				input.Separator = util.ToPointer(strings.TrimSpace(separator.Text))
-			}
-			if host.Text != "" {
-				input.Host = util.ToPointer(strings.TrimSpace(host.Text))
-			}
-			if origin.Text != "" {
-				input.Origin = util.ToPointer(strings.TrimSpace(origin.Text))
-			}
-			guiLogger := logger.GetLogger("gui")
-			guiLogger.Info().
-				Str("url", input.URL).
-				Str("folder", input.Folder).
-				Interface("host", input.Host).
-				Interface("origin", input.Origin).
-				Interface("separator", input.Separator).
-				Msg("Starting download with user input")
-			c := make(chan int)
-			done := make(chan bool)
+	// Create orchestration service
+	serviceFactory := service.NewFactory(cfg)
+	orchestrationService := serviceFactory.CreateOrchestrationService()
 
-			go func() {
-				setDownloadingContents(downloading, c)
-				done <- true
-			}()
+	// Create GUI handler
+	guiFactory := gui.NewFactory(cfg)
+	guiHandler := guiFactory.CreateDefaultHandler(orchestrationService)
 
-			go func() {
-				defer close(c)
-				if err := controller.DoFileDownload(input, c, cfg); err != nil {
-					guiLogger.Error().Err(err).Msg("Download failed")
-					fyne.Do(func() {
-						showResult(a, fmt.Sprintf("Failed: %s", err.Error()))
-						downloading.Close()
-					})
-				} else {
-					guiLogger.Info().Msg("Download completed successfully")
-					fyne.Do(func() {
-						showResult(a, "Success")
-						downloading.Close()
-					})
-				}
-			}()
-
-			go func() {
-				<-done
-			}()
-		},
+	// Show main window
+	if err := guiHandler.ShowMainWindow(ctx); err != nil {
+		panic(err)
 	}
-	w.SetContent(form)
-	w.ShowAndRun()
-}
-
-func showDownloading(a fyne.App) (w fyne.Window) {
-	w = a.NewWindow("Downloading")
-	w.Resize(fyne.NewSize(300, 100))
-	text := canvas.NewText("Downloading now...", color.Black)
-	text.Alignment = fyne.TextAlignTrailing
-	text.TextStyle = fyne.TextStyle{Monospace: true}
-	content := container.New(layout.NewCenterLayout(), text)
-	w.SetContent(content)
-	w.Show()
-
-	return w
-}
-
-func setDownloadingContents(w fyne.Window, c chan int) {
-	for i := range c {
-		if w != nil {
-			fyne.Do(func() {
-				if w != nil {
-					text := canvas.NewText(fmt.Sprintf("Downloading now ... %d", i), color.Black)
-					text.Alignment = fyne.TextAlignTrailing
-					text.TextStyle = fyne.TextStyle{Monospace: true}
-					content := container.New(layout.NewCenterLayout(), text)
-					w.SetContent(content)
-				}
-			})
-		}
-	}
-}
-
-func showResult(a fyne.App, t string) (w fyne.Window) {
-	w = a.NewWindow("Result")
-	w.Resize(fyne.NewSize(300, 100))
-	text := canvas.NewText(t, color.Black)
-	text.Alignment = fyne.TextAlignTrailing
-	text.TextStyle = fyne.TextStyle{Italic: true}
-	content := container.New(layout.NewCenterLayout(), text)
-	w.SetContent(content)
-	w.Show()
-	return w
 }

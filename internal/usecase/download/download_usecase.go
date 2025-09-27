@@ -5,6 +5,7 @@ import (
 	"cheetah/internal/domain/entity"
 	"cheetah/internal/domain/repository"
 	"cheetah/internal/domain/service"
+	contextPkg "cheetah/pkg/context"
 	"cheetah/pkg/logger"
 	"cheetah/util"
 	"context"
@@ -27,6 +28,9 @@ type downloadUseCase struct {
 	// Progress tracking
 	progressMu sync.RWMutex
 	progress   map[string]*service.DownloadProgress
+
+	// Context management
+	contextManager *contextPkg.Manager
 }
 
 // NewDownloadUseCase creates a new download use case
@@ -37,14 +41,16 @@ func NewDownloadUseCase(
 	mediaProcessor repository.MediaProcessor,
 	cfg *config.Config,
 ) service.DownloadService {
+	logger := logger.GetLogger("download_usecase")
 	return &downloadUseCase{
 		fileRepo:       fileRepo,
 		httpClient:     httpClient,
 		httpRepo:       httpRepo,
 		mediaProcessor: mediaProcessor,
 		config:         cfg,
-		logger:         logger.GetLogger("download_usecase"),
+		logger:         logger,
 		progress:       make(map[string]*service.DownloadProgress),
+		contextManager: contextPkg.NewManager(logger),
 	}
 }
 
@@ -99,11 +105,21 @@ func (du *downloadUseCase) CreateDownloadJob(ctx context.Context, request servic
 
 // StartDownload starts the download process
 func (du *downloadUseCase) StartDownload(ctx context.Context, job *entity.DownloadJob) error {
+	// Create a dedicated context for this download with timeout
+	downloadTimeout := 30 * time.Minute // Default timeout
+	downloadCtx, cancel := du.contextManager.CreateContext(ctx, job.ID, downloadTimeout)
+	defer cancel()
+
+	// Add context values
+	downloadCtx = contextPkg.WithSessionID(downloadCtx, job.ID)
+	downloadCtx = contextPkg.WithOperation(downloadCtx, "download")
+
 	du.logger.Info().
 		Str("job_id", job.ID).
 		Str("url", job.URL).
 		Str("folder", job.Folder).
-		Msg("Starting download")
+		Dur("timeout", downloadTimeout).
+		Msg("Starting download with context")
 
 	// Mark job as started
 	job.Start()
@@ -111,7 +127,7 @@ func (du *downloadUseCase) StartDownload(ctx context.Context, job *entity.Downlo
 
 	// Create download directory
 	downloadPath := job.GetSavePath()
-	if err := du.fileRepo.CreateDirectory(ctx, downloadPath); err != nil {
+	if err := du.fileRepo.CreateDirectory(downloadCtx, downloadPath); err != nil {
 		job.Fail(fmt.Errorf("failed to create directory: %w", err))
 		du.updateProgressError(job.ID, err.Error())
 		return err
@@ -125,15 +141,25 @@ func (du *downloadUseCase) StartDownload(ctx context.Context, job *entity.Downlo
 		return err
 	}
 
-	// Start concurrent download
-	if err := du.downloadFiles(ctx, job, sequence); err != nil {
+	// Start concurrent download with cancellation support
+	if err := du.downloadFiles(downloadCtx, job, sequence); err != nil {
+		if downloadCtx.Err() != nil {
+			job.Cancel()
+			du.updateProgressStatus(job.ID, job.Status.String())
+			return fmt.Errorf("download cancelled: %w", downloadCtx.Err())
+		}
 		job.Fail(err)
 		du.updateProgressError(job.ID, err.Error())
 		return err
 	}
 
 	// Process downloaded files
-	if err := du.processFiles(ctx, job, sequence); err != nil {
+	if err := du.processFiles(downloadCtx, job, sequence); err != nil {
+		if downloadCtx.Err() != nil {
+			job.Cancel()
+			du.updateProgressStatus(job.ID, job.Status.String())
+			return fmt.Errorf("processing cancelled: %w", downloadCtx.Err())
+		}
 		job.Fail(fmt.Errorf("failed to process files: %w", err))
 		du.updateProgressError(job.ID, err.Error())
 		return err
@@ -156,15 +182,19 @@ func (du *downloadUseCase) CancelDownload(ctx context.Context, jobID string) err
 		Str("job_id", jobID).
 		Msg("Cancelling download")
 
+	// Cancel the context for this job
+	if du.contextManager.CancelContext(jobID) {
+		du.logger.Info().
+			Str("job_id", jobID).
+			Msg("Download context cancelled successfully")
+	}
+
 	du.progressMu.Lock()
 	if progress, exists := du.progress[jobID]; exists {
 		progress.Status = entity.StatusCancelled.String()
 		progress.Error = "Download cancelled by user"
 	}
 	du.progressMu.Unlock()
-
-	// Note: In a real implementation, we would need to store job state
-	// and signal cancellation to running goroutines
 
 	return nil
 }
@@ -257,19 +287,20 @@ func (du *downloadUseCase) downloadFiles(ctx context.Context, job *entity.Downlo
 		Msg("Starting concurrent file download")
 
 	for {
+		// Check for cancellation first
+		select {
+		case <-ctx.Done():
+			du.logger.Info().Msg("Download cancelled by context")
+			return ctx.Err()
+		default:
+		}
+
 		if errCount > maxErrors {
 			du.logger.Warn().
 				Int("error_count", errCount).
 				Int("max_errors", maxErrors).
 				Msg("Maximum errors reached, stopping download")
 			break
-		}
-
-		// Check for cancellation
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
 		}
 
 		var wg sync.WaitGroup
@@ -279,6 +310,14 @@ func (du *downloadUseCase) downloadFiles(ctx context.Context, job *entity.Downlo
 		for j := 0; j < batchSize; j++ {
 			go func(fileNum int) {
 				defer wg.Done()
+
+				// Check for cancellation before starting file download
+				select {
+				case <-ctx.Done():
+					batchErrors <- ctx.Err()
+					return
+				default:
+				}
 
 				if err := du.downloadSingleFile(ctx, job, sequence, uint64(fileNum), routineErrMax); err != nil {
 					batchErrors <- err
